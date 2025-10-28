@@ -116,7 +116,7 @@ public class Room {
 
     private void loadTextures() {
         try {
-            // Загрузка текстур (замените на ваши пути)
+            // Загрузка текстур
             floorTexture = TextureLoader.loadTexture("src/main/resources/textures/floor01.jpg");
             wallTexture = TextureLoader.loadTexture("src/main/resources/textures/wall01.jpg");
             roofTexture = TextureLoader.loadTexture("src/main/resources/textures/roof01.jpg");
@@ -168,17 +168,10 @@ public class Room {
         shader.setMat4("model", roofModel);
         quadMesh.render();
 
-        // Рендер стен
+        // Рендер стен (УБРАНА ПЕРЕДНЯЯ СТЕНА - комментируем этот блок)
         glBindTexture(GL_TEXTURE_2D, wallTexture);
 
-        // Передняя стена
-        Matrix4f frontWallModel = new Matrix4f()
-                .translate(0.0f, 0.0f, -roomSize)
-                .scale(roomSize * 2, roomSize * 2, 0.0f);
-        shader.setMat4("model", frontWallModel);
-        quadMesh.render();
-
-        // Задняя стена
+        // ЗАДНЯЯ стена (теперь она видна камерой)
         Matrix4f backWallModel = new Matrix4f()
                 .translate(0.0f, 0.0f, roomSize)
                 .scale(roomSize * 2, roomSize * 2, 0.0f)
@@ -210,25 +203,7 @@ public class Room {
         shader.setMat4("model", crateModel);
         cubeMesh.render();
 
-        // Рендер надписи с фамилией
-        renderSurname(view, projection);
-    }
-
-    private void renderSurname(Matrix4f view, Matrix4f projection) {
-        shader.use();
-        shader.setMat4("view", view);
-        shader.setMat4("projection", projection);
-        shader.setVec4("color", new Vector4f(1.0f, 1.0f, 1.0f, 1.0f)); // Белый цвет
-
-        // Надпись на передней стене
-        Matrix4f textModel = new Matrix4f()
-                .translate(0.0f, 0.0f, -4.9f)
-                .scale(3.0f, 0.4f, 0.1f);
-        shader.setMat4("model", textModel);
-        cubeMesh.render();
-
-        // Возвращаем настройки для текстур
-        shader.setVec4("color", new Vector4f(0.0f, 0.0f, 0.0f, 0.0f));
+        // УБРАН РЕНДЕР НАДПИСИ С ФАМИЛИЕЙ
     }
 
     public void cleanup() {

@@ -1,10 +1,11 @@
 package org.example;
 
-import org.joml.Math;
 import org.lwjgl.*;
 import org.lwjgl.glfw.*;
 import org.lwjgl.opengl.*;
 import org.joml.*;
+
+import java.lang.Math;
 
 import static org.lwjgl.glfw.Callbacks.*;
 import static org.lwjgl.glfw.GLFW.*;
@@ -20,6 +21,9 @@ public class Lab3 {
     private double lastTime;
     private boolean mousePressed = false;
     private double lastMouseX, lastMouseY;
+
+    // Меш для сферы
+    private Mesh sphereMesh;
 
     public static void main(String[] args) {
         new Lab3().run();
@@ -83,12 +87,67 @@ public class Lab3 {
             );
             camera = new Camera();
             room = new Room(shader);
-            ball = new Ball(new Vector3f(1.0f, 2.0f, 1.0f), 0.3f);
+            ball = new Ball(new Vector3f(1.0f, 2.0f, 1.0f), 0.5f);
+
+            // Создаем меш для сферы
+            createSphereMesh();
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize components", e);
         }
 
         lastTime = glfwGetTime();
+    }
+
+    private void createSphereMesh() {
+        int stacks = 16;
+        int slices = 16;
+        int vertexCount = (stacks + 1) * (slices + 1);
+        int indexCount = stacks * slices * 6;
+
+        float[] vertices = new float[vertexCount * 3];
+        float[] texCoords = new float[vertexCount * 2];
+        int[] indices = new int[indexCount];
+
+        int vertexIndex = 0;
+        int texIndex = 0;
+
+        // Генерация вершин сферы
+        for (int i = 0; i <= stacks; i++) {
+            float phi = (float) (Math.PI * i / stacks);
+            for (int j = 0; j <= slices; j++) {
+                float theta = (float) (2.0 * Math.PI * j / slices);
+
+                float x = (float) (Math.sin(phi) * Math.cos(theta));
+                float y = (float) Math.cos(phi);
+                float z = (float) (Math.sin(phi) * Math.sin(theta));
+
+                vertices[vertexIndex++] = x;
+                vertices[vertexIndex++] = y;
+                vertices[vertexIndex++] = z;
+
+                texCoords[texIndex++] = (float) j / slices;
+                texCoords[texIndex++] = (float) i / stacks;
+            }
+        }
+
+        // Генерация индексов
+        int index = 0;
+        for (int i = 0; i < stacks; i++) {
+            for (int j = 0; j < slices; j++) {
+                int first = i * (slices + 1) + j;
+                int second = first + slices + 1;
+
+                indices[index++] = first;
+                indices[index++] = second;
+                indices[index++] = first + 1;
+
+                indices[index++] = first + 1;
+                indices[index++] = second;
+                indices[index++] = second + 1;
+            }
+        }
+
+        sphereMesh = new Mesh(vertices, indices, texCoords);
     }
 
     private void setupCallbacks() {
@@ -162,40 +221,25 @@ public class Lab3 {
 
     private void renderBall(Matrix4f view, Matrix4f projection) {
         shader.use();
+        shader.setMat4("view", view);
+        shader.setMat4("projection", projection);
+
         Matrix4f model = new Matrix4f()
                 .translate(ball.getPosition())
                 .scale(ball.getRadius());
 
         shader.setMat4("model", model);
-        shader.setVec4("color", new Vector4f(1.0f, 0.0f, 0.0f, 0.7f));
+        shader.setVec4("color", new Vector4f(1.0f, 0.0f, 0.0f, 0.7f)); // Красный полупрозрачный
 
-        // Здесь должен быть рендер сферы
-        renderSphere();
-    }
-
-    private void renderSphere() {
-        // Простой куб вместо сферы для демонстрации
-        float[] vertices = {
-                -1.0f, -1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f, 1.0f, -1.0f, -1.0f, 1.0f, -1.0f, // задняя грань
-                -1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, -1.0f, 1.0f, 1.0f  // передняя грань
-        };
-
-        int[] indices = {
-                0, 1, 2, 2, 3, 0, // задняя грань
-                4, 5, 6, 6, 7, 4, // передняя грань
-                0, 4, 7, 7, 3, 0, // левая грань
-                1, 5, 6, 6, 2, 1, // правая грань
-                3, 2, 6, 6, 7, 3, // верхняя грань
-                0, 1, 5, 5, 4, 0  // нижняя грань
-        };
-
-        Mesh cube = new Mesh(vertices, indices, null);
-        cube.render();
-        cube.cleanup();
+        // Рендер сферы
+        if (sphereMesh != null) {
+            sphereMesh.render();
+        }
     }
 
     private void cleanup() {
         if (room != null) room.cleanup();
+        if (sphereMesh != null) sphereMesh.cleanup();
         if (shader != null) glDeleteProgram(shader.programId);
 
         glfwFreeCallbacks(window);

@@ -32,95 +32,93 @@ public class Ball {
     }
 
     private void checkWallCollisions() {
-        float roomSize = 5.0f;
+        float roomSize = 5.0f - radius; // Учитываем радиус шарика
 
         // Стены по X
-        if (position.x - radius < -roomSize) {
-            position.x = -roomSize + radius;
+        if (position.x < -roomSize) {
+            position.x = -roomSize;
             velocity.x = -velocity.x * BOUNCE_DAMPING;
-        } else if (position.x + radius > roomSize) {
-            position.x = roomSize - radius;
+        } else if (position.x > roomSize) {
+            position.x = roomSize;
             velocity.x = -velocity.x * BOUNCE_DAMPING;
         }
 
         // Пол и потолок по Y
-        if (position.y - radius < -roomSize) {
-            position.y = -roomSize + radius;
+        if (position.y < -roomSize) {
+            position.y = -roomSize;
             velocity.y = -velocity.y * BOUNCE_DAMPING;
             // Добавляем небольшое трение при ударе о пол
             velocity.x *= 0.9f;
             velocity.z *= 0.9f;
-        } else if (position.y + radius > roomSize) {
-            position.y = roomSize - radius;
+        } else if (position.y > roomSize) {
+            position.y = roomSize;
             velocity.y = -velocity.y * BOUNCE_DAMPING;
         }
 
-        // Стены по Z
-        if (position.z - radius < -roomSize) {
-            position.z = -roomSize + radius;
-            velocity.z = -velocity.z * BOUNCE_DAMPING;
-        } else if (position.z + radius > roomSize) {
-            position.z = roomSize - radius;
+        // Стены по Z (УБРАНА ПЕРЕДНЯЯ СТЕНА, оставляем только заднюю)
+        if (position.z > roomSize) {
+            position.z = roomSize;
             velocity.z = -velocity.z * BOUNCE_DAMPING;
         }
+        // Передняя стена убрана - шарик может вылететь вперед
     }
 
     private void checkCrateCollision(Vector3f cratePos, float crateSize) {
-        float halfSize = crateSize / 2.0f;
+        float halfSize = crateSize / 2.0f + radius; // Учитываем радиус шарика
 
         // Проверяем столкновение по осям
-        boolean collisionX = position.x + radius > cratePos.x - halfSize &&
-                position.x - radius < cratePos.x + halfSize;
-        boolean collisionY = position.y + radius > cratePos.y - halfSize &&
-                position.y - radius < cratePos.y + halfSize;
-        boolean collisionZ = position.z + radius > cratePos.z - halfSize &&
-                position.z - radius < cratePos.z + halfSize;
+        boolean collisionX = position.x > cratePos.x - halfSize &&
+                position.x < cratePos.x + halfSize;
+        boolean collisionY = position.y > cratePos.y - halfSize &&
+                position.y < cratePos.y + halfSize;
+        boolean collisionZ = position.z > cratePos.z - halfSize &&
+                position.z < cratePos.z + halfSize;
 
         if (collisionX && collisionY && collisionZ) {
             // Определяем сторону столкновения
             float overlapX = 0, overlapY = 0, overlapZ = 0;
 
             if (position.x < cratePos.x) {
-                overlapX = (position.x + radius) - (cratePos.x - halfSize);
+                overlapX = position.x - (cratePos.x - halfSize);
             } else {
-                overlapX = (cratePos.x + halfSize) - (position.x - radius);
+                overlapX = (cratePos.x + halfSize) - position.x;
             }
 
             if (position.y < cratePos.y) {
-                overlapY = (position.y + radius) - (cratePos.y - halfSize);
+                overlapY = position.y - (cratePos.y - halfSize);
             } else {
-                overlapY = (cratePos.y + halfSize) - (position.y - radius);
+                overlapY = (cratePos.y + halfSize) - position.y;
             }
 
             if (position.z < cratePos.z) {
-                overlapZ = (position.z + radius) - (cratePos.z - halfSize);
+                overlapZ = position.z - (cratePos.z - halfSize);
             } else {
-                overlapZ = (cratePos.z + halfSize) - (position.z - radius);
+                overlapZ = (cratePos.z + halfSize) - position.z;
             }
 
             // Находим минимальное перекрытие для определения стороны столкновения
             if (overlapX < overlapY && overlapX < overlapZ) {
                 // Столкновение по X
                 if (position.x < cratePos.x) {
-                    position.x = cratePos.x - halfSize - radius;
+                    position.x = cratePos.x - halfSize;
                 } else {
-                    position.x = cratePos.x + halfSize + radius;
+                    position.x = cratePos.x + halfSize;
                 }
                 velocity.x = -velocity.x * BOUNCE_DAMPING;
             } else if (overlapY < overlapX && overlapY < overlapZ) {
                 // Столкновение по Y
                 if (position.y < cratePos.y) {
-                    position.y = cratePos.y - halfSize - radius;
+                    position.y = cratePos.y - halfSize;
                 } else {
-                    position.y = cratePos.y + halfSize + radius;
+                    position.y = cratePos.y + halfSize;
                 }
                 velocity.y = -velocity.y * BOUNCE_DAMPING;
             } else {
                 // Столкновение по Z
                 if (position.z < cratePos.z) {
-                    position.z = cratePos.z - halfSize - radius;
+                    position.z = cratePos.z - halfSize;
                 } else {
-                    position.z = cratePos.z + halfSize + radius;
+                    position.z = cratePos.z + halfSize;
                 }
                 velocity.z = -velocity.z * BOUNCE_DAMPING;
             }
@@ -133,16 +131,5 @@ public class Ball {
 
     public float getRadius() {
         return radius;
-    }
-
-    public Vector3f getVelocity() {
-        return new Vector3f(velocity);
-    }
-
-    // Метод для отладки
-    public void printState() {
-        System.out.printf("Ball: pos(%.2f, %.2f, %.2f) vel(%.2f, %.2f, %.2f)%n",
-                position.x, position.y, position.z,
-                velocity.x, velocity.y, velocity.z);
     }
 }
