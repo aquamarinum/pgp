@@ -22,7 +22,7 @@ public class Lab3 {
     private boolean mousePressed = false;
     private double lastMouseX, lastMouseY;
 
-    // Меш для сферы
+    
     private Mesh sphereMesh;
 
     public static void main(String[] args) {
@@ -39,14 +39,14 @@ public class Lab3 {
     }
 
     private void init() {
-        // Настройка GLFW
+        
         GLFWErrorCallback.createPrint(System.err).set();
 
         if (!glfwInit()) {
             throw new IllegalStateException("Unable to initialize GLFW");
         }
 
-        // Современные настройки OpenGL
+        
         glfwDefaultWindowHints();
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
@@ -60,26 +60,26 @@ public class Lab3 {
             throw new RuntimeException("Failed to create the GLFW window");
         }
 
-        // Callbacks
+        
         setupCallbacks();
 
-        // Центрирование окна
+        
         centerWindow();
 
         glfwMakeContextCurrent(window);
         glfwSwapInterval(1);
         glfwShowWindow(window);
 
-        // Инициализация OpenGL
+        
         GL.createCapabilities();
 
-        // Настройка OpenGL
+        
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-        // Инициализация компонентов
+        
         try {
             shader = new ShaderProgram(
                     "src/main/resources/shaders/vertex.glsl",
@@ -87,9 +87,9 @@ public class Lab3 {
             );
             camera = new Camera();
             room = new Room(shader);
-            ball = new Ball(new Vector3f(1.0f, 2.0f, 1.0f), 0.5f);
+            ball = new Ball(new Vector3f(2.5f, 2.0f, 5.0f), 1.0f);
 
-            // Создаем меш для сферы
+            
             createSphereMesh();
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize components", e);
@@ -111,7 +111,7 @@ public class Lab3 {
         int vertexIndex = 0;
         int texIndex = 0;
 
-        // Генерация вершин сферы
+        
         for (int i = 0; i <= stacks; i++) {
             float phi = (float) (Math.PI * i / stacks);
             for (int j = 0; j <= slices; j++) {
@@ -130,7 +130,7 @@ public class Lab3 {
             }
         }
 
-        // Генерация индексов
+        
         int index = 0;
         for (int i = 0; i < stacks; i++) {
             for (int j = 0; j < slices; j++) {
@@ -194,10 +194,10 @@ public class Lab3 {
 
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-            // Обновление
+            
             ball.update(deltaTime, room.getCratePosition(), room.getCrateSize());
 
-            // Настройка матриц
+            
             Matrix4f projection = new Matrix4f().perspective(
                     (float) Math.toRadians(45.0f),
                     1200.0f / 800.0f,
@@ -206,7 +206,7 @@ public class Lab3 {
             );
             Matrix4f view = camera.getViewMatrix();
 
-            // Рендер
+            
             shader.use();
             shader.setMat4("projection", projection);
             shader.setMat4("view", view);
@@ -229,9 +229,9 @@ public class Lab3 {
                 .scale(ball.getRadius());
 
         shader.setMat4("model", model);
-        shader.setVec4("color", new Vector4f(1.0f, 0.0f, 0.0f, 0.7f)); // Красный полупрозрачный
+        shader.setVec4("color", new Vector4f(1.0f, 0.0f, 0.0f, 0.7f)); 
 
-        // Рендер сферы
+        
         if (sphereMesh != null) {
             sphereMesh.render();
         }

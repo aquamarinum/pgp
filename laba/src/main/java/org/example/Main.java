@@ -22,7 +22,7 @@ public class Main {
         init();
         loop();
 
-        // Освобождение ресурсов
+        
         glfwFreeCallbacks(window);
         glfwDestroyWindow(window);
         glfwTerminate();
@@ -30,33 +30,33 @@ public class Main {
     }
 
     private void init() {
-        // Настройка ошибок
+        
         GLFWErrorCallback.createPrint(System.err).set();
 
-        // Инициализация GLFW
+        
         if (!glfwInit()) {
             throw new IllegalStateException("Unable to initialize GLFW");
         }
 
-        // Настройка окна
+        
         glfwDefaultWindowHints();
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
-        // Создание окна
+        
         window = glfwCreateWindow(800, 600, "OpenGL Window", NULL, NULL);
         if (window == NULL) {
             throw new RuntimeException("Failed to create the GLFW window");
         }
 
-        // Настройка клавиатуры
+        
         glfwSetKeyCallback(window, (window, key, scancode, action, mods) -> {
             if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE) {
                 glfwSetWindowShouldClose(window, true);
             }
         });
 
-        // Центрирование окна
+        
         GLFWVidMode vidmode = glfwGetVideoMode(glfwGetPrimaryMonitor());
         glfwSetWindowPos(
                 window,
@@ -64,27 +64,27 @@ public class Main {
                 (vidmode.height() - 600) / 2
         );
 
-        // Сделать окно видимым
+        
         glfwShowWindow(window);
 
-        // Сделать контекст OpenGL текущим
+        
         glfwMakeContextCurrent(window);
-        // Включить v-sync
+        
         glfwSwapInterval(1);
 
-        // Инициализация OpenGL
+        
         GL.createCapabilities();
     }
 
     private void loop() {
-        // Установка цвета очистки
+        
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 
-        // Главный цикл
+        
         while (!glfwWindowShouldClose(window)) {
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-            // Рендеринг треугольника
+            
             glBegin(GL_TRIANGLES);
             glColor3f(1.0f, 0.0f, 0.0f);
             glVertex2f(-0.5f, -0.5f);

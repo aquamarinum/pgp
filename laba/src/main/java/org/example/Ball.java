@@ -12,29 +12,29 @@ public class Ball {
 
     public Ball(Vector3f position, float radius) {
         this.position = new Vector3f(position);
-        this.velocity = new Vector3f(2.0f, 5.0f, 3.0f); // Начальная скорость
+        this.velocity = new Vector3f(4.0f, 5.0f, 3.0f);
         this.radius = radius;
     }
 
     public void update(float deltaTime, Vector3f cratePosition, float crateSize) {
-        // Применяем гравитацию
+        
         velocity.y += GRAVITY * deltaTime;
 
-        // Небольшое трение
+        
         velocity.mul(FRICTION);
 
-        // Обновляем позицию
+        
         position.add(velocity.x * deltaTime, velocity.y * deltaTime, velocity.z * deltaTime);
 
-        // Проверяем столкновения
+        
         checkWallCollisions();
         checkCrateCollision(cratePosition, crateSize);
     }
 
     private void checkWallCollisions() {
-        float roomSize = 5.0f - radius; // Учитываем радиус шарика
+        float roomSize = 5.0f - radius; 
 
-        // Стены по X
+        
         if (position.x < -roomSize) {
             position.x = -roomSize;
             velocity.x = -velocity.x * BOUNCE_DAMPING;
@@ -43,11 +43,11 @@ public class Ball {
             velocity.x = -velocity.x * BOUNCE_DAMPING;
         }
 
-        // Пол и потолок по Y
+        
         if (position.y < -roomSize) {
             position.y = -roomSize;
             velocity.y = -velocity.y * BOUNCE_DAMPING;
-            // Добавляем небольшое трение при ударе о пол
+            
             velocity.x *= 0.9f;
             velocity.z *= 0.9f;
         } else if (position.y > roomSize) {
@@ -55,18 +55,18 @@ public class Ball {
             velocity.y = -velocity.y * BOUNCE_DAMPING;
         }
 
-        // Стены по Z (УБРАНА ПЕРЕДНЯЯ СТЕНА, оставляем только заднюю)
+        
         if (position.z > roomSize) {
             position.z = roomSize;
             velocity.z = -velocity.z * BOUNCE_DAMPING;
         }
-        // Передняя стена убрана - шарик может вылететь вперед
+        
     }
 
     private void checkCrateCollision(Vector3f cratePos, float crateSize) {
-        float halfSize = crateSize / 2.0f + radius; // Учитываем радиус шарика
+        float halfSize = crateSize / 2.0f + radius; 
 
-        // Проверяем столкновение по осям
+        
         boolean collisionX = position.x > cratePos.x - halfSize &&
                 position.x < cratePos.x + halfSize;
         boolean collisionY = position.y > cratePos.y - halfSize &&
@@ -75,7 +75,7 @@ public class Ball {
                 position.z < cratePos.z + halfSize;
 
         if (collisionX && collisionY && collisionZ) {
-            // Определяем сторону столкновения
+            
             float overlapX = 0, overlapY = 0, overlapZ = 0;
 
             if (position.x < cratePos.x) {
@@ -96,9 +96,9 @@ public class Ball {
                 overlapZ = (cratePos.z + halfSize) - position.z;
             }
 
-            // Находим минимальное перекрытие для определения стороны столкновения
+            
             if (overlapX < overlapY && overlapX < overlapZ) {
-                // Столкновение по X
+                
                 if (position.x < cratePos.x) {
                     position.x = cratePos.x - halfSize;
                 } else {
@@ -106,7 +106,7 @@ public class Ball {
                 }
                 velocity.x = -velocity.x * BOUNCE_DAMPING;
             } else if (overlapY < overlapX && overlapY < overlapZ) {
-                // Столкновение по Y
+                
                 if (position.y < cratePos.y) {
                     position.y = cratePos.y - halfSize;
                 } else {
@@ -114,7 +114,7 @@ public class Ball {
                 }
                 velocity.y = -velocity.y * BOUNCE_DAMPING;
             } else {
-                // Столкновение по Z
+                
                 if (position.z < cratePos.z) {
                     position.z = cratePos.z - halfSize;
                 } else {
