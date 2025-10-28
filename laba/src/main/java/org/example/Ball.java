@@ -8,9 +8,10 @@ public class Ball {
     private float radius;
     private static final float GRAVITY = -9.8f;
     private static final float BOUNCE_DAMPING = 0.8f;
+    private static final float FRICTION = 0.99f;
 
     public Ball(Vector3f position, float radius) {
-        this.position = position;
+        this.position = new Vector3f(position);
         this.velocity = new Vector3f(2.0f, 5.0f, 3.0f); // Начальная скорость
         this.radius = radius;
     }
@@ -19,13 +20,14 @@ public class Ball {
         // Применяем гравитацию
         velocity.y += GRAVITY * deltaTime;
 
+        // Небольшое трение
+        velocity.mul(FRICTION);
+
         // Обновляем позицию
         position.add(velocity.x * deltaTime, velocity.y * deltaTime, velocity.z * deltaTime);
 
-        // Проверяем столкновения со стенами (комната 10x10x10)
+        // Проверяем столкновения
         checkWallCollisions();
-
-        // Проверяем столкновение с ящиком
         checkCrateCollision(cratePosition, crateSize);
     }
 
@@ -45,6 +47,9 @@ public class Ball {
         if (position.y - radius < -roomSize) {
             position.y = -roomSize + radius;
             velocity.y = -velocity.y * BOUNCE_DAMPING;
+            // Добавляем небольшое трение при ударе о пол
+            velocity.x *= 0.9f;
+            velocity.z *= 0.9f;
         } else if (position.y + radius > roomSize) {
             position.y = roomSize - radius;
             velocity.y = -velocity.y * BOUNCE_DAMPING;
@@ -63,26 +68,81 @@ public class Ball {
     private void checkCrateCollision(Vector3f cratePos, float crateSize) {
         float halfSize = crateSize / 2.0f;
 
-        // Находим ближайшую точку на ящике к шарику
-        float closestX = Math.max(cratePos.x - halfSize, Math.min(position.x, cratePos.x + halfSize));
-        float closestY = Math.max(cratePos.y - halfSize, Math.min(position.y, cratePos.y + halfSize));
-        float closestZ = Math.max(cratePos.z - halfSize, Math.min(position.z, cratePos.z + halfSize));
+        // Проверяем столкновение по осям
+        boolean collisionX = position.x + radius > cratePos.x - halfSize &&
+                position.x - radius < cratePos.x + halfSize;
+        boolean collisionY = position.y + radius > cratePos.y - halfSize &&
+                position.y - radius < cratePos.y + halfSize;
+        boolean collisionZ = position.z + radius > cratePos.z - halfSize &&
+                position.z - radius < cratePos.z + halfSize;
 
-        // Проверяем столкновение
-        float distance = position.distance(closestX, closestY, closestZ);
+        if (collisionX && collisionY && collisionZ) {
+            // Определяем сторону столкновения
+            float overlapX = 0, overlapY = 0, overlapZ = 0;
 
-        if (distance < radius) {
-            // Выталкиваем шарик
-            Vector3f push = new Vector3f(position).sub(closestX, closestY, closestZ).normalize();
-            position.set(closestX, closestY, closestZ).add(push.mul(radius));
+            if (position.x < cratePos.x) {
+                overlapX = (position.x + radius) - (cratePos.x - halfSize);
+            } else {
+                overlapX = (cratePos.x + halfSize) - (position.x - radius);
+            }
 
-            // Отражение скорости
-            Vector3f normal = new Vector3f(position).sub(closestX, closestY, closestZ).normalize();
-            float dotProduct = velocity.dot(normal);
-            velocity.sub(normal.mul(2 * dotProduct * BOUNCE_DAMPING));
+            if (position.y < cratePos.y) {
+                overlapY = (position.y + radius) - (cratePos.y - halfSize);
+            } else {
+                overlapY = (cratePos.y + halfSize) - (position.y - radius);
+            }
+
+            if (position.z < cratePos.z) {
+                overlapZ = (position.z + radius) - (cratePos.z - halfSize);
+            } else {
+                overlapZ = (cratePos.z + halfSize) - (position.z - radius);
+            }
+
+            // Находим минимальное перекрытие для определения стороны столкновения
+            if (overlapX < overlapY && overlapX < overlapZ) {
+                // Столкновение по X
+                if (position.x < cratePos.x) {
+                    position.x = cratePos.x - halfSize - radius;
+                } else {
+                    position.x = cratePos.x + halfSize + radius;
+                }
+                velocity.x = -velocity.x * BOUNCE_DAMPING;
+            } else if (overlapY < overlapX && overlapY < overlapZ) {
+                // Столкновение по Y
+                if (position.y < cratePos.y) {
+                    position.y = cratePos.y - halfSize - radius;
+                } else {
+                    position.y = cratePos.y + halfSize + radius;
+                }
+                velocity.y = -velocity.y * BOUNCE_DAMPING;
+            } else {
+                // Столкновение по Z
+                if (position.z < cratePos.z) {
+                    position.z = cratePos.z - halfSize - radius;
+                } else {
+                    position.z = cratePos.z + halfSize + radius;
+                }
+                velocity.z = -velocity.z * BOUNCE_DAMPING;
+            }
         }
     }
 
-    public Vector3f getPosition() { return position; }
-    public float getRadius() { return radius; }
+    public Vector3f getPosition() {
+        return new Vector3f(position);
+    }
+
+    public float getRadius() {
+        return radius;
+    }
+
+    public Vector3f getVelocity() {
+        return new Vector3f(velocity);
+    }
+
+    // Метод для отладки
+    public void printState() {
+        System.out.printf("Ball: pos(%.2f, %.2f, %.2f) vel(%.2f, %.2f, %.2f)%n",
+                position.x, position.y, position.z,
+                velocity.x, velocity.y, velocity.z);
+    }
 }

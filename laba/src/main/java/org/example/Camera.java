@@ -1,7 +1,7 @@
 package org.example;
 
+import org.joml.Matrix4f;
 import org.joml.Vector3f;
-import static org.lwjgl.opengl.GL33.*;
 
 public class Camera {
     private Vector3f position;
@@ -17,12 +17,9 @@ public class Camera {
         this.up = new Vector3f(0.0f, 1.0f, 0.0f);
     }
 
-    public void apply() {
+    public Matrix4f getViewMatrix() {
         updatePosition();
-        glLoadIdentity();
-        gluLookAt(position.x, position.y, position.z,
-                target.x, target.y, target.z,
-                up.x, up.y, up.z);
+        return new Matrix4f().lookAt(position, target, up);
     }
 
     private void updatePosition() {
@@ -52,24 +49,5 @@ public class Camera {
 
     public void setDistance(float distance) {
         this.distanceFromTarget = Math.max(2.0f, Math.min(20.0f, distance));
-    }
-
-    // Вспомогательный метод для gluLookAt
-    private void gluLookAt(float eyeX, float eyeY, float eyeZ,
-                           float centerX, float centerY, float centerZ,
-                           float upX, float upY, float upZ) {
-        Vector3f f = new Vector3f(centerX - eyeX, centerY - eyeY, centerZ - eyeZ).normalize();
-        Vector3f up = new Vector3f(upX, upY, upZ).normalize();
-        Vector3f s = f.cross(up, new Vector3f()).normalize();
-        Vector3f u = s.cross(f, new Vector3f());
-
-        java.nio.FloatBuffer buffer = java.nio.FloatBuffer.allocate(16);
-        buffer.put(0, s.x); buffer.put(1, u.x); buffer.put(2, -f.x); buffer.put(3, 0);
-        buffer.put(4, s.y); buffer.put(5, u.y); buffer.put(6, -f.y); buffer.put(7, 0);
-        buffer.put(8, s.z); buffer.put(9, u.z); buffer.put(10, -f.z); buffer.put(11, 0);
-        buffer.put(12, 0); buffer.put(13, 0); buffer.put(14, 0); buffer.put(15, 1);
-
-        glMultMatrixf(buffer);
-        glTranslatef(-eyeX, -eyeY, -eyeZ);
     }
 }

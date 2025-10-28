@@ -1,167 +1,251 @@
 package org.example;
 
+import org.joml.Matrix4f;
 import org.joml.Vector3f;
+import org.joml.Vector4f;
+
 import static org.lwjgl.opengl.GL33.*;
 
 public class Room {
     private int floorTexture, wallTexture, roofTexture, crateTexture;
     private Vector3f cratePosition;
     private float crateSize = 2.0f;
+    private ShaderProgram shader;
+    private Mesh cubeMesh;
+    private Mesh quadMesh;
 
-    public Room() {
-        cratePosition = new Vector3f(0.0f, -3.0f, 0.0f);
+    public Room(ShaderProgram shader) {
+        this.shader = shader;
+        this.cratePosition = new Vector3f(0.0f, -3.0f, 0.0f);
+
+        // Создание мешей
+        createMeshes();
 
         // Загрузка текстур
+        loadTextures();
+    }
+
+    private void createMeshes() {
+        // Вершины для куба
+        float[] cubeVertices = {
+                // Передняя грань
+                -0.5f, -0.5f,  0.5f,
+                0.5f, -0.5f,  0.5f,
+                0.5f,  0.5f,  0.5f,
+                -0.5f,  0.5f,  0.5f,
+                // Задняя грань
+                -0.5f, -0.5f, -0.5f,
+                0.5f, -0.5f, -0.5f,
+                0.5f,  0.5f, -0.5f,
+                -0.5f,  0.5f, -0.5f,
+                // Левая грань
+                -0.5f, -0.5f, -0.5f,
+                -0.5f, -0.5f,  0.5f,
+                -0.5f,  0.5f,  0.5f,
+                -0.5f,  0.5f, -0.5f,
+                // Правая грань
+                0.5f, -0.5f, -0.5f,
+                0.5f, -0.5f,  0.5f,
+                0.5f,  0.5f,  0.5f,
+                0.5f,  0.5f, -0.5f,
+                // Верхняя грань
+                -0.5f,  0.5f, -0.5f,
+                0.5f,  0.5f, -0.5f,
+                0.5f,  0.5f,  0.5f,
+                -0.5f,  0.5f,  0.5f,
+                // Нижняя грань
+                -0.5f, -0.5f, -0.5f,
+                0.5f, -0.5f, -0.5f,
+                0.5f, -0.5f,  0.5f,
+                -0.5f, -0.5f,  0.5f
+        };
+
+        float[] cubeTexCoords = {
+                // Передняя грань
+                0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+                // Задняя грань
+                0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+                // Левая грань
+                0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+                // Правая грань
+                0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+                // Верхняя грань
+                0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+                // Нижняя грань
+                0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f
+        };
+
+        int[] cubeIndices = {
+                // Передняя грань
+                0, 1, 2, 2, 3, 0,
+                // Задняя грань
+                4, 5, 6, 6, 7, 4,
+                // Левая грань
+                8, 9, 10, 10, 11, 8,
+                // Правая грань
+                12, 13, 14, 14, 15, 12,
+                // Верхняя грань
+                16, 17, 18, 18, 19, 16,
+                // Нижняя грань
+                20, 21, 22, 22, 23, 20
+        };
+
+        cubeMesh = new Mesh(cubeVertices, cubeIndices, cubeTexCoords);
+
+        // Вершины для квадрата (стены, пол, потолок)
+        float[] quadVertices = {
+                -0.5f, -0.5f, 0.0f,
+                0.5f, -0.5f, 0.0f,
+                0.5f,  0.5f, 0.0f,
+                -0.5f,  0.5f, 0.0f
+        };
+
+        float[] quadTexCoords = {
+                0.0f, 0.0f,
+                1.0f, 0.0f,
+                1.0f, 1.0f,
+                0.0f, 1.0f
+        };
+
+        int[] quadIndices = {
+                0, 1, 2, 2, 3, 0
+        };
+
+        quadMesh = new Mesh(quadVertices, quadIndices, quadTexCoords);
+    }
+
+    private void loadTextures() {
         try {
+            // Загрузка текстур (замените на ваши пути)
             floorTexture = TextureLoader.loadTexture("src/main/resources/textures/floor01.jpg");
             wallTexture = TextureLoader.loadTexture("src/main/resources/textures/wall01.jpg");
             roofTexture = TextureLoader.loadTexture("src/main/resources/textures/roof01.jpg");
             crateTexture = TextureLoader.loadTexture("src/main/resources/textures/crate01.jpg");
         } catch (Exception e) {
             System.err.println("Error loading textures: " + e.getMessage());
-            // Заглушки если текстуры не загрузились
-            floorTexture = wallTexture = roofTexture = crateTexture = 0;
+            // Создаем белые текстуры если загрузка не удалась
+            floorTexture = wallTexture = roofTexture = crateTexture = createWhiteTexture();
         }
     }
 
-    public void render() {
+    private int createWhiteTexture() {
+        int texture = glGenTextures();
+        glBindTexture(GL_TEXTURE_2D, texture);
+
+        java.nio.ByteBuffer buffer = org.lwjgl.BufferUtils.createByteBuffer(4);
+        buffer.put((byte) 255).put((byte) 255).put((byte) 255).put((byte) 255);
+        buffer.flip();
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        return texture;
+    }
+
+    public void render(Matrix4f view, Matrix4f projection) {
+        shader.use();
+        shader.setMat4("view", view);
+        shader.setMat4("projection", projection);
+        shader.setVec4("color", new Vector4f(0.0f, 0.0f, 0.0f, 0.0f)); // Использовать текстуру
+
         float roomSize = 5.0f;
 
         // Рендер пола
         glBindTexture(GL_TEXTURE_2D, floorTexture);
-        glColor3f(1.0f, 1.0f, 1.0f);
-        renderQuad(new Vector3f(-roomSize, -roomSize, -roomSize),
-                new Vector3f(roomSize * 2, 0, 0),
-                new Vector3f(0, 0, roomSize * 2));
+        Matrix4f floorModel = new Matrix4f()
+                .translate(0.0f, -roomSize, 0.0f)
+                .scale(roomSize * 2, 0.0f, roomSize * 2)
+                .rotateX((float) Math.toRadians(-90));
+        shader.setMat4("model", floorModel);
+        quadMesh.render();
 
         // Рендер потолка
         glBindTexture(GL_TEXTURE_2D, roofTexture);
-        glColor3f(1.0f, 1.0f, 1.0f);
-        renderQuad(new Vector3f(-roomSize, roomSize, -roomSize),
-                new Vector3f(roomSize * 2, 0, 0),
-                new Vector3f(0, 0, roomSize * 2));
+        Matrix4f roofModel = new Matrix4f()
+                .translate(0.0f, roomSize, 0.0f)
+                .scale(roomSize * 2, 0.0f, roomSize * 2)
+                .rotateX((float) Math.toRadians(90));
+        shader.setMat4("model", roofModel);
+        quadMesh.render();
 
         // Рендер стен
         glBindTexture(GL_TEXTURE_2D, wallTexture);
-        glColor3f(1.0f, 1.0f, 1.0f);
 
-        // Передняя стена (Z = -roomSize)
-        renderQuad(new Vector3f(-roomSize, -roomSize, -roomSize),
-                new Vector3f(roomSize * 2, 0, 0),
-                new Vector3f(0, roomSize * 2, 0));
+        // Передняя стена
+        Matrix4f frontWallModel = new Matrix4f()
+                .translate(0.0f, 0.0f, -roomSize)
+                .scale(roomSize * 2, roomSize * 2, 0.0f);
+        shader.setMat4("model", frontWallModel);
+        quadMesh.render();
 
-        // Задняя стена (Z = roomSize)
-        renderQuad(new Vector3f(-roomSize, -roomSize, roomSize),
-                new Vector3f(roomSize * 2, 0, 0),
-                new Vector3f(0, roomSize * 2, 0));
+        // Задняя стена
+        Matrix4f backWallModel = new Matrix4f()
+                .translate(0.0f, 0.0f, roomSize)
+                .scale(roomSize * 2, roomSize * 2, 0.0f)
+                .rotateY((float) Math.toRadians(180));
+        shader.setMat4("model", backWallModel);
+        quadMesh.render();
 
-        // Левая стена (X = -roomSize)
-        renderQuad(new Vector3f(-roomSize, -roomSize, -roomSize),
-                new Vector3f(0, 0, roomSize * 2),
-                new Vector3f(0, roomSize * 2, 0));
+        // Левая стена
+        Matrix4f leftWallModel = new Matrix4f()
+                .translate(-roomSize, 0.0f, 0.0f)
+                .scale(0.0f, roomSize * 2, roomSize * 2)
+                .rotateY((float) Math.toRadians(-90));
+        shader.setMat4("model", leftWallModel);
+        quadMesh.render();
 
-        // Правая стена (X = roomSize)
-        renderQuad(new Vector3f(roomSize, -roomSize, -roomSize),
-                new Vector3f(0, 0, roomSize * 2),
-                new Vector3f(0, roomSize * 2, 0));
+        // Правая стена
+        Matrix4f rightWallModel = new Matrix4f()
+                .translate(roomSize, 0.0f, 0.0f)
+                .scale(0.0f, roomSize * 2, roomSize * 2)
+                .rotateY((float) Math.toRadians(90));
+        shader.setMat4("model", rightWallModel);
+        quadMesh.render();
 
         // Рендер ящика
         glBindTexture(GL_TEXTURE_2D, crateTexture);
-        glColor3f(1.0f, 1.0f, 1.0f);
-        renderCube(cratePosition, crateSize);
+        Matrix4f crateModel = new Matrix4f()
+                .translate(cratePosition)
+                .scale(crateSize);
+        shader.setMat4("model", crateModel);
+        cubeMesh.render();
 
         // Рендер надписи с фамилией
-        renderSurname();
+        renderSurname(view, projection);
     }
 
-    private void renderQuad(Vector3f corner, Vector3f width, Vector3f height) {
-        glBegin(GL_QUADS);
-        glTexCoord2f(0, 0);
-        glVertex3f(corner.x, corner.y, corner.z);
+    private void renderSurname(Matrix4f view, Matrix4f projection) {
+        shader.use();
+        shader.setMat4("view", view);
+        shader.setMat4("projection", projection);
+        shader.setVec4("color", new Vector4f(1.0f, 1.0f, 1.0f, 1.0f)); // Белый цвет
 
-        glTexCoord2f(1, 0);
-        glVertex3f(corner.x + width.x, corner.y + width.y, corner.z + width.z);
+        // Надпись на передней стене
+        Matrix4f textModel = new Matrix4f()
+                .translate(0.0f, 0.0f, -4.9f)
+                .scale(3.0f, 0.4f, 0.1f);
+        shader.setMat4("model", textModel);
+        cubeMesh.render();
 
-        glTexCoord2f(1, 1);
-        glVertex3f(corner.x + width.x + height.x, corner.y + width.y + height.y, corner.z + width.z + height.z);
-
-        glTexCoord2f(0, 1);
-        glVertex3f(corner.x + height.x, corner.y + height.y, corner.z + height.z);
-        glEnd();
+        // Возвращаем настройки для текстур
+        shader.setVec4("color", new Vector4f(0.0f, 0.0f, 0.0f, 0.0f));
     }
 
-    private void renderCube(Vector3f center, float size) {
-        float half = size / 2.0f;
+    public void cleanup() {
+        if (cubeMesh != null) cubeMesh.cleanup();
+        if (quadMesh != null) quadMesh.cleanup();
 
-        // Передняя грань
-        glBegin(GL_QUADS);
-        glTexCoord2f(0, 0); glVertex3f(center.x - half, center.y - half, center.z - half);
-        glTexCoord2f(1, 0); glVertex3f(center.x + half, center.y - half, center.z - half);
-        glTexCoord2f(1, 1); glVertex3f(center.x + half, center.y + half, center.z - half);
-        glTexCoord2f(0, 1); glVertex3f(center.x - half, center.y + half, center.z - half);
-        glEnd();
-
-        // Задняя грань
-        glBegin(GL_QUADS);
-        glTexCoord2f(0, 0); glVertex3f(center.x - half, center.y - half, center.z + half);
-        glTexCoord2f(1, 0); glVertex3f(center.x + half, center.y - half, center.z + half);
-        glTexCoord2f(1, 1); glVertex3f(center.x + half, center.y + half, center.z + half);
-        glTexCoord2f(0, 1); glVertex3f(center.x - half, center.y + half, center.z + half);
-        glEnd();
-
-        // Левая грань
-        glBegin(GL_QUADS);
-        glTexCoord2f(0, 0); glVertex3f(center.x - half, center.y - half, center.z - half);
-        glTexCoord2f(1, 0); glVertex3f(center.x - half, center.y - half, center.z + half);
-        glTexCoord2f(1, 1); glVertex3f(center.x - half, center.y + half, center.z + half);
-        glTexCoord2f(0, 1); glVertex3f(center.x - half, center.y + half, center.z - half);
-        glEnd();
-
-        // Правая грань
-        glBegin(GL_QUADS);
-        glTexCoord2f(0, 0); glVertex3f(center.x + half, center.y - half, center.z - half);
-        glTexCoord2f(1, 0); glVertex3f(center.x + half, center.y - half, center.z + half);
-        glTexCoord2f(1, 1); glVertex3f(center.x + half, center.y + half, center.z + half);
-        glTexCoord2f(0, 1); glVertex3f(center.x + half, center.y + half, center.z - half);
-        glEnd();
-
-        // Верхняя грань
-        glBegin(GL_QUADS);
-        glTexCoord2f(0, 0); glVertex3f(center.x - half, center.y + half, center.z - half);
-        glTexCoord2f(1, 0); glVertex3f(center.x + half, center.y + half, center.z - half);
-        glTexCoord2f(1, 1); glVertex3f(center.x + half, center.y + half, center.z + half);
-        glTexCoord2f(0, 1); glVertex3f(center.x - half, center.y + half, center.z + half);
-        glEnd();
-
-        // Нижняя грань
-        glBegin(GL_QUADS);
-        glTexCoord2f(0, 0); glVertex3f(center.x - half, center.y - half, center.z - half);
-        glTexCoord2f(1, 0); glVertex3f(center.x + half, center.y - half, center.z - half);
-        glTexCoord2f(1, 1); glVertex3f(center.x + half, center.y - half, center.z + half);
-        glTexCoord2f(0, 1); glVertex3f(center.x - half, center.y - half, center.z + half);
-        glEnd();
+        glDeleteTextures(floorTexture);
+        glDeleteTextures(wallTexture);
+        glDeleteTextures(roofTexture);
+        glDeleteTextures(crateTexture);
     }
 
-    private void renderSurname() {
-        glDisable(GL_TEXTURE_2D);
-        glColor3f(1.0f, 1.0f, 1.0f); // Белый цвет
-
-        // Рендер текста на передней стене
-        glPushMatrix();
-        glTranslatef(0.0f, 0.0f, -4.9f); // Немного перед стеной
-
-        // Простой рендер текста - рисуем прямоугольник с текстом
-        glBegin(GL_QUADS);
-        glVertex3f(-1.0f, -0.2f, 0.0f);
-        glVertex3f(1.0f, -0.2f, 0.0f);
-        glVertex3f(1.0f, 0.2f, 0.0f);
-        glVertex3f(-1.0f, 0.2f, 0.0f);
-        glEnd();
-
-        glPopMatrix();
-        glEnable(GL_TEXTURE_2D);
+    public Vector3f getCratePosition() {
+        return new Vector3f(cratePosition);
     }
 
-    public Vector3f getCratePosition() { return cratePosition; }
-    public float getCrateSize() { return crateSize; }
+    public float getCrateSize() {
+        return crateSize;
+    }
 }

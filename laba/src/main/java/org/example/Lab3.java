@@ -1,10 +1,10 @@
 package org.example;
 
+import org.joml.Math;
 import org.lwjgl.*;
 import org.lwjgl.glfw.*;
 import org.lwjgl.opengl.*;
-import org.joml.Matrix4f;
-import org.joml.Vector3f;
+import org.joml.*;
 
 import static org.lwjgl.glfw.Callbacks.*;
 import static org.lwjgl.glfw.GLFW.*;
@@ -16,6 +16,7 @@ public class Lab3 {
     private Camera camera;
     private Room room;
     private Ball ball;
+    private ShaderProgram shader;
     private double lastTime;
     private boolean mousePressed = false;
     private double lastMouseX, lastMouseY;
@@ -30,11 +31,7 @@ public class Lab3 {
         init();
         loop();
 
-        // Освобождение ресурсов
-        glfwFreeCallbacks(window);
-        glfwDestroyWindow(window);
-        glfwTerminate();
-        glfwSetErrorCallback(null).free();
+        cleanup();
     }
 
     private void init() {
@@ -45,21 +42,56 @@ public class Lab3 {
             throw new IllegalStateException("Unable to initialize GLFW");
         }
 
-        // Настройка окна (используем совместимый профиль)
+        // Современные настройки OpenGL
         glfwDefaultWindowHints();
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-        // Убираем core profile для совместимости
-        // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
 
-        window = glfwCreateWindow(1200, 800, "Lab 3 - 3D Room with Physics", NULL, NULL);
+        window = glfwCreateWindow(1200, 800, "Lab 3 - Modern OpenGL", NULL, NULL);
         if (window == NULL) {
             throw new RuntimeException("Failed to create the GLFW window");
         }
 
-        // Настройка callback'ов
+        // Callbacks
+        setupCallbacks();
+
+        // Центрирование окна
+        centerWindow();
+
+        glfwMakeContextCurrent(window);
+        glfwSwapInterval(1);
+        glfwShowWindow(window);
+
+        // Инициализация OpenGL
+        GL.createCapabilities();
+
+        // Настройка OpenGL
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glEnable(GL_DEPTH_TEST);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        // Инициализация компонентов
+        try {
+            shader = new ShaderProgram(
+                    "src/main/resources/shaders/vertex.glsl",
+                    "src/main/resources/shaders/fragment.glsl"
+            );
+            camera = new Camera();
+            room = new Room(shader);
+            ball = new Ball(new Vector3f(1.0f, 2.0f, 1.0f), 0.3f);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to initialize components", e);
+        }
+
+        lastTime = glfwGetTime();
+    }
+
+    private void setupCallbacks() {
         glfwSetKeyCallback(window, (window, key, scancode, action, mods) -> {
             if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE) {
                 glfwSetWindowShouldClose(window, true);
@@ -84,35 +116,15 @@ public class Lab3 {
         glfwSetScrollCallback(window, (window, xoffset, yoffset) -> {
             camera.setDistance((float) (camera.getDistance() - yoffset * 0.5));
         });
+    }
 
-        // Центрирование окна
+    private void centerWindow() {
         GLFWVidMode vidmode = glfwGetVideoMode(glfwGetPrimaryMonitor());
         glfwSetWindowPos(
                 window,
                 (vidmode.width() - 1200) / 2,
                 (vidmode.height() - 800) / 2
         );
-
-        glfwMakeContextCurrent(window);
-        glfwSwapInterval(1); // V-Sync
-        glfwShowWindow(window);
-
-        // Инициализация OpenGL
-        GL.createCapabilities();
-
-        // Настройка OpenGL
-        glClearColor(0.1f, 0.1f, 0.1f, 0.0f);
-        glEnable(GL_DEPTH_TEST);
-        glEnable(GL_TEXTURE_2D);
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-        // Инициализация компонентов
-        camera = new Camera();
-        room = new Room();
-        ball = new Ball(new Vector3f(1.0f, 2.0f, 1.0f), 0.3f);
-
-        lastTime = glfwGetTime();
     }
 
     private void loop() {
@@ -123,81 +135,72 @@ public class Lab3 {
 
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-            // Настройка проекционной матрицы
-            glMatrixMode(GL_PROJECTION);
-            glLoadIdentity();
-            gluPerspective(45.0f, 1200.0f / 800.0f, 0.1f, 100.0f);
-
-            // Настройка видовой матрицы
-            glMatrixMode(GL_MODELVIEW);
-            glLoadIdentity();
-
-            // Применяем камеру
-            camera.apply();
-
-            // Обновление физики шарика
+            // Обновление
             ball.update(deltaTime, room.getCratePosition(), room.getCrateSize());
 
-            // Рендер сцены - БЕЗ ПАРАМЕТРОВ
-            room.render();
+            // Настройка матриц
+            Matrix4f projection = new Matrix4f().perspective(
+                    (float) Math.toRadians(45.0f),
+                    1200.0f / 800.0f,
+                    0.1f,
+                    100.0f
+            );
+            Matrix4f view = camera.getViewMatrix();
 
-            // Рендер шарика
-            renderBall(ball);
+            // Рендер
+            shader.use();
+            shader.setMat4("projection", projection);
+            shader.setMat4("view", view);
+
+            room.render(view, projection);
+            renderBall(view, projection);
 
             glfwSwapBuffers(window);
             glfwPollEvents();
         }
     }
 
-    private void renderBall(Ball ball) {
-        glPushMatrix();
-        glTranslatef(ball.getPosition().x, ball.getPosition().y, ball.getPosition().z);
-        glColor4f(1.0f, 0.0f, 0.0f, 0.7f); // Красный полупрозрачный
+    private void renderBall(Matrix4f view, Matrix4f projection) {
+        shader.use();
+        Matrix4f model = new Matrix4f()
+                .translate(ball.getPosition())
+                .scale(ball.getRadius());
 
-        // Простой рендер сферы через квадрики
-        renderSphere(ball.getRadius());
+        shader.setMat4("model", model);
+        shader.setVec4("color", new Vector4f(1.0f, 0.0f, 0.0f, 0.7f));
 
-        glPopMatrix();
+        // Здесь должен быть рендер сферы
+        renderSphere();
     }
 
-    private void renderSphere(float radius) {
-        int slices = 16;
-        int stacks = 16;
+    private void renderSphere() {
+        // Простой куб вместо сферы для демонстрации
+        float[] vertices = {
+                -1.0f, -1.0f, -1.0f, 1.0f, -1.0f, -1.0f, 1.0f, 1.0f, -1.0f, -1.0f, 1.0f, -1.0f, // задняя грань
+                -1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, -1.0f, 1.0f, 1.0f  // передняя грань
+        };
 
-        for (int i = 0; i < stacks; i++) {
-            float phi1 = (float) (Math.PI * i / stacks);
-            float phi2 = (float) (Math.PI * (i + 1) / stacks);
+        int[] indices = {
+                0, 1, 2, 2, 3, 0, // задняя грань
+                4, 5, 6, 6, 7, 4, // передняя грань
+                0, 4, 7, 7, 3, 0, // левая грань
+                1, 5, 6, 6, 2, 1, // правая грань
+                3, 2, 6, 6, 7, 3, // верхняя грань
+                0, 1, 5, 5, 4, 0  // нижняя грань
+        };
 
-            glBegin(GL_QUAD_STRIP);
-            for (int j = 0; j <= slices; j++) {
-                float theta = (float) (2.0 * Math.PI * j / slices);
-
-                float x1 = (float) (Math.sin(phi1) * Math.cos(theta) * radius);
-                float y1 = (float) (Math.cos(phi1) * radius);
-                float z1 = (float) (Math.sin(phi1) * Math.sin(theta) * radius);
-
-                float x2 = (float) (Math.sin(phi2) * Math.cos(theta) * radius);
-                float y2 = (float) (Math.cos(phi2) * radius);
-                float z2 = (float) (Math.sin(phi2) * Math.sin(theta) * radius);
-
-                glVertex3f(x1, y1, z1);
-                glVertex3f(x2, y2, z2);
-            }
-            glEnd();
-        }
+        Mesh cube = new Mesh(vertices, indices, null);
+        cube.render();
+        cube.cleanup();
     }
 
-    // Вспомогательный метод для gluPerspective
-    private void gluPerspective(float fovy, float aspect, float zNear, float zFar) {
-        float f = (float) (1.0 / Math.tan(Math.toRadians(fovy) / 2.0));
-        glLoadIdentity();
+    private void cleanup() {
+        if (room != null) room.cleanup();
+        if (shader != null) glDeleteProgram(shader.programId);
 
-        java.nio.FloatBuffer buffer = java.nio.FloatBuffer.allocate(16);
-        buffer.put(0, f / aspect); buffer.put(1, 0); buffer.put(2, 0); buffer.put(3, 0);
-        buffer.put(4, 0); buffer.put(5, f); buffer.put(6, 0); buffer.put(7, 0);
-        buffer.put(8, 0); buffer.put(9, 0); buffer.put(10, (zFar + zNear) / (zNear - zFar)); buffer.put(11, -1);
-        buffer.put(12, 0); buffer.put(13, 0); buffer.put(14, (2 * zFar * zNear) / (zNear - zFar)); buffer.put(15, 0);
-
-        glMultMatrixf(buffer);
+        glfwFreeCallbacks(window);
+        glfwDestroyWindow(window);
+        glfwTerminate();
+        glfwSetErrorCallback(null).free();
     }
 }
